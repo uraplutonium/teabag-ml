@@ -84,7 +84,6 @@ public class BICScoreFunction implements BNScoreFunction {
 		// System.out.print("mij* [");
 		// for (int eachNum : eachm1Query) System.out.print(eachNum + ", ");
 		// System.out.println("] = " + m1);
-
 		/***********************************
 		 * end of the calculation of mij*
 		 **********************************/
