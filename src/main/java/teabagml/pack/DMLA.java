@@ -384,7 +384,6 @@ public class DMLA {
 	
 	asiabn.updateAllMarginalProb();
 	asiabn.printNodesInfo();
-	
 
 	// 4. calculate the BIC score of the current bn with the dataset
 	BICScoreFunction bicFunc = new BICScoreFunction();
