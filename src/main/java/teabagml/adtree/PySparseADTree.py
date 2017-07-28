@@ -9,6 +9,28 @@ recordsLength = 0
 data = None
 adtree = None
 
+def loadFile(filePath):
+    global data
+    global arityLength
+    global airtyList
+    global recordsLength
+    # initialise the data, arityList, arityLength and recordsLength
+    initRecord([filePath])
+    data.displayAll()
+    return (data, arityLength, arityList, recordsLength)
+
+def countInFile(fileTuple, query):
+    global data
+    global arityLength
+    global airtyList
+    global recordsLength
+    data = fileTuple[0]
+    arityLength = fileTuple[1]
+    arityList = fileTuple[2]
+    recordsLength = fileTuple[3]
+    return count(query)
+    
+
 def makeSparseADTree(filePath):
     global data
     global recordsLength
@@ -42,7 +64,7 @@ def makeContab(adtreeTuple, attrList):
 
 '''
 @param contab the contingency table
-@param query the query like 
+@param query the query like
 '''
 def getCount(contabTuple, query):
     global arityLength

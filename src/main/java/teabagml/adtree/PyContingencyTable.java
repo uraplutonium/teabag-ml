@@ -33,8 +33,8 @@ public class PyContingencyTable {
 	
 	PythonInterpreter interpreter = new PythonInterpreter();
 	interpreter.execfile("/media/uraplutonium/Workstation/Workspace/teabag-ml/src/main/java/teabagml/adtree/PySparseADTree.py");
-	PyFunction makeContabFunc = (PyFunction)interpreter.get("getCount", PyFunction.class);
-	PyInteger pyCount = (PyInteger)(makeContabFunc.__call__(contab, pyQuery));
+	PyFunction getCountFunc = (PyFunction)interpreter.get("getCount", PyFunction.class);
+	PyInteger pyCount = (PyInteger)(getCountFunc.__call__(contab, pyQuery));
 	double count = (double)(pyCount.getValue());
 
 	/*

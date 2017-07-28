@@ -359,9 +359,12 @@ public class DMLA {
 	// 4. make adtree
 	PySparseADTree adtree = new PySparseADTree("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv");
 
+	PyDataset pyDataset = new PyDataset("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv", false, false);
+
 	// 5. calculate the BIC score of the current bn with the dataset
 	BICScoreFunction bicFunc = new BICScoreFunction();
-	double bicScore = bicFunc.getScore(irisDataset, irisbn, adtree);
+	// double bicScore = bicFunc.getScore(irisDataset, irisbn, null);
+	double bicScore = bicFunc.getScore(pyDataset, irisbn, null);
 	System.out.println("BIC is : " + bicScore);
     }
 
