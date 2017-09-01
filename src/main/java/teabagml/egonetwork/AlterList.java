@@ -149,6 +149,7 @@ public class AlterList extends ArrayList<Alter> {
 
 	    // write feature differences
 	    for(int i=0; i<numAlter; i++) {
+		System.out.println("alter_" + i);
 		for(int j=i+1; j<numAlter; j++) { // for each pair of alters
 		    newLine = "";
 		    for(int k=0; k<dimension; k++) { // for each feature

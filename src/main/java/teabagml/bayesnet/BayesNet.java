@@ -720,6 +720,7 @@ public class BayesNet {
 	return ancestorsList;
     }
 
+    
     /**
      * Conduct the topological sort of the bayesnet(DAG)
      * saves the topological sequence to the topoSequence

@@ -343,4 +343,31 @@ public class Circle {
 	}
 	return (numerator/denominator);
     }
+
+        /**
+     * @param egoNet the ego-network
+     * @param circleSet the set of circles whose entropy to calculate
+     * @param targetCircleSet the set of real circles
+     * @return the purity of circle upon egoNet
+     */
+    public static double circlePurity(EgoNetwork egoNet, Circle[] circleSet, Circle[] targetCircleSet) {
+	double sum = 0;
+	for(Circle eachCircle : circleSet) {
+	    double eachAlterCounts = (double)eachCircle.alterCounts();
+	    double maxIntersection = 0;
+	    //System.out.println("eachC: " + eachAlterCounts); ////
+	    for(Circle eachTargetCircle : targetCircleSet) {
+		double intersection = 0;
+		for(int i=0; i<eachCircle.numAlter; i++) {
+		    if(eachCircle.isAlterIn(i)==1 && eachTargetCircle.isAlterIn(i)==1)
+			intersection++;
+		}
+		//System.out.println("intersection: " + intersection); ////
+		if (maxIntersection < intersection)
+		    maxIntersection = intersection;
+	    }
+	    sum += maxIntersection;
+	}
+	return (sum /egoNet.getNumAlters());
+    }
 }

@@ -407,8 +407,258 @@ public class DMLA {
 	// leastCostEngine.displayPath();
     }
 
+    public static double testCategorisation(double alpha) {
+	long[] checkpoint = new long[13];
+	
+	String filePrefix = "/media/uraplutonium/Workstation/Workspace/datasets/egonet/googleplus";
+	AlterList alterList = null;
+	System.out.println("#1. Creating AlterList..."); checkpoint[0] = System.currentTimeMillis();
+	try {
+	    alterList = new AlterList(filePrefix+".feat", filePrefix+".featnames");
+	} catch(Exception e) {
+	    e.printStackTrace();
+	}
+
+	int numAlter = alterList.size();
+	System.out.println("#2. Creating EgoNetwork..."); checkpoint[1] = System.currentTimeMillis();
+	EgoNetwork egoNet = EgoNetwork.getEgoNetwork(filePrefix+".edges", false, numAlter, alterList);
+
+	// FSPG starts
+	System.out.println("#3. Making DifferenceFile..."); checkpoint[2] = System.currentTimeMillis();
+	// alterList.makeDifferenceFile("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv");
+	
+	System.out.println("#4. Loading Dataset..."); checkpoint[3] = System.currentTimeMillis();
+	Dataset egoDataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv", true, false);
+	System.out.println(egoDataset.getInfo());
+
+	//System.out.println(egoDataset.getSymbolicTable());
+
+	//BayesNet fbn = new BayesNet("F bn", egoDataset.getDimension(), egoDataset.getArity());
+	// calculate the hyper parameter kappa, which represents the number of circles
+	int kappa = 2;
+	int numIter = 3; // 30000
+	System.out.println("#5. Creating EgoBayesNet..."); checkpoint[4] = System.currentTimeMillis();
+	EgoBayesNet egobn = new EgoBayesNet("ego bn", egoDataset.getDimension(), kappa, egoNet.getNumAlters(), egoDataset.getArity(), alpha);
+	
+	// calculate the probability of E in a spacific circumstance, which includes a set of circles, belong their associated features
+
+	System.out.println("#6. Constructing structure of EgoBayesNet..."); checkpoint[5] = System.currentTimeMillis();
+	
+	TreeSearchEngine closestCostEngine = new TreeSearchEngine(new ClosestCostOPENTable());
+	closestCostEngine.search(new BayesNetStatus(StatusType.BASIC, egobn.getFeatNet(), egoDataset), new BayesNetStatus(StatusType.BASIC, egobn.getFeatNet(), egoDataset));
+	Stack<StatusNode> resultStack = closestCostEngine.displayPath();
+	StatusNode resultStatusNode = null;
+	while(!resultStack.isEmpty())
+	    resultStatusNode = resultStack.pop();
+	System.out.println(resultStatusNode);
+	egobn.setFeatNet(((BayesNetStatus)resultStatusNode).getBayesNet());
+	
+	
+	double targetEgoNetProb = 0;
+	// calculate prob and modularity of the target circle set
+
+	System.out.println("#7. Loading target CircleSet..."); checkpoint[6] = System.currentTimeMillis();
+	Circle[] targetCircleSet = Circle.loadFile(filePrefix+".circles", kappa, alterList, egoDataset.getDimension());
+	egobn.setNodeC(targetCircleSet);
+	System.out.println("#8. Updating Prob. for target CircleSet..."); checkpoint[7] = System.currentTimeMillis();
+	egobn.updateAllMarginalProb(egoNet, egoDataset);
+	egobn.printNodesInfo();
+	System.out.println("#9. Computing EgoNetProb for target CircleSet..."); checkpoint[8] = System.currentTimeMillis();
+	targetEgoNetProb = egobn.getEgoNetProb(egoNet);
+	System.out.println("target egoNetProb: " + targetEgoNetProb);
+
+	System.out.println("#10. Computing modularity and entorpy for target CircleSet..."); checkpoint[9] = System.currentTimeMillis();
+	System.out.println("modularity");
+	double totalm = 0;
+	for(Circle eachCircle : targetCircleSet) {
+	    System.out.println(eachCircle);
+	    double m = Circle.circleModularity(egoNet, eachCircle);
+	    System.out.println(m);
+	    totalm+=m;
+	}
+	System.out.println("total M:" + totalm);
+	
+	double entropy = Circle.circleEntropy(egoNet, targetCircleSet, targetCircleSet);
+	System.out.println("target Entropy: " + entropy);
+
+	double nmi = Circle.circleNMI(egoNet, targetCircleSet, targetCircleSet);
+	System.out.println("target NMI: " + nmi);
+	
+	System.out.println("#11. Creating RandomCircleSet..."); checkpoint[10] = System.currentTimeMillis();
+	// CircleSet circleSets = new CircleSet(kappa, egoNet.getNumAlters(), egoDataset.getDimension());
+	RandomCircleSet circleSets = new RandomCircleSet(kappa, egoNet.getNumAlters(), egoDataset.getDimension(), numIter);
+	
+	int circleSetCounter=0;
+	double maxProb, minProb;
+	Circle[] maxCircleSet, minCircleSet;
+	maxProb = Double.MIN_VALUE;
+	minProb = Double.MAX_VALUE;
+	maxCircleSet = new Circle[kappa];
+	minCircleSet = new Circle[kappa];
+	for(int i=0; i<kappa; i++) {
+	    maxCircleSet[i] = new Circle(egoNet.getNumAlters(), egoDataset.getDimension());
+	    minCircleSet[i] = new Circle(egoNet.getNumAlters(), egoDataset.getDimension());
+	}
+	
+
+	int smaller = 0;
+	int larger = 0;
+
+	double[] probs = new double[numIter];
+	double[] mods = new double[numIter];
+
+	double minEntropy = 10000000, maxEntropy = 0, minNMI = 10000000, maxNMI = 0, minPurity = 10000000, maxPurity = 0;
+	
+	System.out.println("#12. Updating and computing prob. for circleSets..."); checkpoint[11] = System.currentTimeMillis();
+
+
+	/*************************/
+	/*
+	Circle[] circleSet = new Circle[kappa];
+	for(int i=0; i<115; i++) {
+	    for(int j=0; j<kappa; j++) {
+		circleSet[j] = new Circle(numAlter, 1);
+		circleSet[j].addFeature(0);
+	    }
+	    circleSet[0].addAlter(i);
+	}
+
+	for(int i=0; i<115; i++) {
+	    int maxIndex = 0;
+	    double maxnmi = 10000000;
+	    for(int j=0; j<kappa; j++) {
+		circleSet[maxIndex].removeAlter(i);
+		circleSet[j].addAlter(i);
+		
+		egobn.setNodeC(circleSet);
+		egobn.updateAllMarginalProb(egoNet, egoDataset);
+		double egoNetProb = egobn.getEgoNetProb(egoNet);
+		
+		if(egoNetProb < maxnmi) { // we find a better cirlce(index) for alter_i (0<=i<numAlter)
+		    maxnmi = egoNetProb;
+		    maxIndex = j;
+		} else { // undo
+		    circleSet[j].removeAlter(i);
+		    circleSet[maxIndex].addAlter(i);
+		}
+	    }
+	    System.out.print(maxIndex + "\t");
+	}
+	
+	egobn.setNodeC(circleSet);
+	egobn.updateAllMarginalProb(egoNet, egoDataset);
+	double egoNetProb = egobn.getEgoNetProb(egoNet);
+	
+	System.out.println("FINAL: " + Circle.circleNMI(egoNet, circleSet, targetCircleSet));
+	System.out.println("FINAL: " + Circle.circleEntropy(egoNet, circleSet, targetCircleSet));
+	System.out.println("FINAL: " + Circle.circleModularity(egoNet, circleSet));
+	System.out.println("FINAL: " + egoNetProb);
+
+	*/
+	/*************************/
+	    
+	
+	for(Circle[] eachCircleSet : circleSets) {
+	    circleSetCounter++;
+	    System.out.print(" circleSet_" + circleSetCounter);
+	    egobn.setNodeC(eachCircleSet);
+	    egobn.updateAllMarginalProb(egoNet, egoDataset);
+	    //egobn.printNodesInfo();
+	    double egoNetProb = egobn.getEgoNetProb(egoNet);
+	    // System.out.println("egoNetProb(" + circleSetCounter + "): " + egoNetProb);
+	    probs[circleSetCounter-1] = egoNetProb;
+	    mods[circleSetCounter-1] = Circle.circleModularity(egoNet, eachCircleSet);
+
+	    double newEntropy = Circle.circleEntropy(egoNet, eachCircleSet, targetCircleSet);
+	    double newNMI = Circle.circleNMI(egoNet, eachCircleSet, targetCircleSet);
+	    double newPurity = Circle.circlePurity(egoNet, eachCircleSet, targetCircleSet);
+
+	    minEntropy = newEntropy<minEntropy ? newEntropy : minEntropy;
+	    maxEntropy = newEntropy>maxEntropy ? newEntropy : maxEntropy;
+
+	    minNMI = newNMI<minNMI ? newNMI : minNMI;
+	    maxNMI = newNMI>maxNMI ? newNMI : maxNMI;
+	    
+	    minPurity = newPurity<minPurity ? newPurity : minPurity;
+	    maxPurity = newPurity>maxPurity ? newPurity : maxPurity;
+
+	    if(egoNetProb < minProb) {
+		minProb = egoNetProb;
+		for(int i=0; i<kappa; i++)
+		    minCircleSet[i].copyFrom(eachCircleSet[i]);
+	    }
+		
+	    if(egoNetProb > maxProb) {
+		maxProb = egoNetProb;
+		for(int i=0; i<kappa; i++)
+		    maxCircleSet[i].copyFrom(eachCircleSet[i]);
+	    }
+
+	    if(targetEgoNetProb >= egoNetProb)
+		smaller++;
+	    else
+		larger++;
+	}
+    
+
+	System.out.println("\n===================================");
+	System.out.println("minEntropy: " + minEntropy);
+	System.out.println("maxEntropy: " + maxEntropy);
+	System.out.println("minNMI: " + minNMI);
+	System.out.println("maxNMI: " + maxNMI);
+	System.out.println("minPurity: " + minPurity);
+	System.out.println("maxPurity: " + maxPurity);
+	System.out.println("===================================");
+
+	System.out.println("MAX_CIRCLE: " + maxProb);
+	double m = 0;
+	for(int i=0; i<kappa; i++) {
+	    m+=Circle.circleModularity(egoNet, maxCircleSet[i]);
+	    System.out.println("C" + i + " ==========\n" + maxCircleSet[i] + " mod:" + Circle.circleModularity(egoNet, maxCircleSet[i]));
+	}
+	System.out.println("mod_MAX: " + m);
+	System.out.println("ent_MAX: " + Circle.circleEntropy(egoNet, maxCircleSet, targetCircleSet));
+	System.out.println("nmi_MAX: " + Circle.circleNMI(egoNet, maxCircleSet, targetCircleSet));
+	
+	System.out.println("MIN_CIRCLE: " + minProb);
+	m=0;
+	for(int i=0; i<kappa; i++) {
+	    m+=Circle.circleModularity(egoNet, minCircleSet[i]);
+	    System.out.println("C" + i + " ==========\n" + minCircleSet[i] + " mod:" + Circle.circleModularity(egoNet, minCircleSet[i]));
+	}
+	System.out.println("mod_MIN: " + m);
+	System.out.println("ent_MIN: " + Circle.circleEntropy(egoNet, minCircleSet, targetCircleSet));
+	System.out.println("nmi_MIN: " + Circle.circleNMI(egoNet, minCircleSet, targetCircleSet));
+	
+	System.out.println("larger:" + larger);
+	System.out.println("smaller:" + smaller);
+
+	checkpoint[12] = System.currentTimeMillis();
+
+	File f=new File("/home/uraplutonium/w.csv");
+	FileWriter fw;
+	try {
+	    fw=new FileWriter(f);
+	    String str = "";
+	    for(int i=0; i<numIter; i++) {
+		str += (String.valueOf(probs[i]) + "," + String.valueOf(mods[i]) + "\n");
+	    }
+	    fw.write(str);
+	    fw.close();
+	}catch(Exception e){
+	    e.printStackTrace();
+	}
+
+	for (int i=0; i<13; i++) {
+	    System.out.println(i + "," + checkpoint[i]);
+	}
+
+
+	return (double)larger/(double)(smaller+larger);
+    }
+
     public static double testEgoNetwork(double alpha) {
-	String filePrefix = "/media/uraplutonium/Workstation/Workspace/datasets/egonet/football";
+	String filePrefix = "/media/uraplutonium/Workstation/Workspace/datasets/egonet/facebook";
 	AlterList alterList = null;
 	System.out.println("#1. Creating AlterList...");
 	try {
@@ -432,8 +682,8 @@ public class DMLA {
 
 	//BayesNet fbn = new BayesNet("F bn", egoDataset.getDimension(), egoDataset.getArity());
 	// calculate the hyper parameter kappa, which represents the number of circles
-	int kappa = 12;
-	int numIter = 1000; // 30000
+	int kappa = 24;
+	int numIter = 1; // 30000
 	System.out.println("#5. Creating EgoBayesNet...");
 	EgoBayesNet egobn = new EgoBayesNet("ego bn", egoDataset.getDimension(), kappa, egoNet.getNumAlters(), egoDataset.getArity(), alpha);
 	
@@ -453,7 +703,7 @@ public class DMLA {
 	
 	double targetEgoNetProb = 0;
 	// calculate prob and modularity of the target circle set
-	
+
 	System.out.println("#7. Loading target CircleSet...");
 	Circle[] targetCircleSet = Circle.loadFile(filePrefix+".circles", kappa, alterList, egoDataset.getDimension());
 	egobn.setNodeC(targetCircleSet);
@@ -504,12 +754,13 @@ public class DMLA {
 	double[] probs = new double[numIter];
 	double[] mods = new double[numIter];
 
-	double minEntropy = 10000000, maxEntropy = 0, minNMI = 10000000, maxNMI = 0;
+	double minEntropy = 10000000, maxEntropy = 0, minNMI = 10000000, maxNMI = 0, minPurity = 10000000, maxPurity = 0;
 	
 	System.out.println("#12. Updating and computing prob. for circleSets...");
 
 
 	/*************************/
+	/*
 	Circle[] circleSet = new Circle[kappa];
 	for(int i=0; i<115; i++) {
 	    for(int j=0; j<kappa; j++) {
@@ -550,10 +801,10 @@ public class DMLA {
 	System.out.println("FINAL: " + Circle.circleModularity(egoNet, circleSet));
 	System.out.println("FINAL: " + egoNetProb);
 
-
+	*/
 	/*************************/
 	    
-	/*
+	
 	for(Circle[] eachCircleSet : circleSets) {
 	    circleSetCounter++;
 	    System.out.print(" circleSet_" + circleSetCounter);
@@ -567,12 +818,16 @@ public class DMLA {
 
 	    double newEntropy = Circle.circleEntropy(egoNet, eachCircleSet, targetCircleSet);
 	    double newNMI = Circle.circleNMI(egoNet, eachCircleSet, targetCircleSet);
+	    double newPurity = Circle.circlePurity(egoNet, eachCircleSet, targetCircleSet);
 
 	    minEntropy = newEntropy<minEntropy ? newEntropy : minEntropy;
 	    maxEntropy = newEntropy>maxEntropy ? newEntropy : maxEntropy;
 
 	    minNMI = newNMI<minNMI ? newNMI : minNMI;
 	    maxNMI = newNMI>maxNMI ? newNMI : maxNMI;
+	    
+	    minPurity = newPurity<minPurity ? newPurity : minPurity;
+	    maxPurity = newPurity>maxPurity ? newPurity : maxPurity;
 
 	    if(egoNetProb < minProb) {
 		minProb = egoNetProb;
@@ -591,13 +846,15 @@ public class DMLA {
 	    else
 		larger++;
 	}
-	*/
+    
 
 	System.out.println("\n===================================");
 	System.out.println("minEntropy: " + minEntropy);
 	System.out.println("maxEntropy: " + maxEntropy);
 	System.out.println("minNMI: " + minNMI);
 	System.out.println("maxNMI: " + maxNMI);
+	System.out.println("minPurity: " + minPurity);
+	System.out.println("maxPurity: " + maxPurity);
 	System.out.println("===================================");
 
 	System.out.println("MAX_CIRCLE: " + maxProb);
@@ -649,7 +906,7 @@ public class DMLA {
 	
 	// System.out.println("==============================");
 
-	testBNLearnIris();
+	//testBNLearnIris();
 
 	// testAutoLearning();
 
@@ -665,10 +922,10 @@ public class DMLA {
 	    System.out.println(eachR);
 	*/
 	
-	/*
+	
 	double rr = testEgoNetwork(-0.5);
 	System.out.println(rr);
-	*/
+	
 
     }
 }
