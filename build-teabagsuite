@@ -1,0 +1,15 @@
+#!/bin/bash
+# This script compiles and installs the teabag-ml, storm-teabag and stormml package using maven3.
+# usage:
+# build-teabagsuite
+
+/media/uraplutonium/Workstation/Applications/apache-maven-3.3.3/bin/mvn clean install -DskipTests=true &&
+cd /media/uraplutonium/Workstation/Workspace/storm-teabag; /media/uraplutonium/Workstation/Applications/apache-maven-3.3.3/bin/mvn clean install -DskipTests=true &&
+cd /media/uraplutonium/Workstation/Workspace/storm-teabag/storm-dist/binary/ ; /media/uraplutonium/Workstation/Applications/apache-maven-3.3.3/bin/mvn package &&
+cd /media/uraplutonium/Workstation/Workspace/stormml; /media/uraplutonium/Workstation/Applications/apache-maven-3.3.3/bin/mvn compile &&
+/media/uraplutonium/Workstation/Applications/apache-maven-3.3.3/bin/mvn package &&
+upn-tea &&
+sudo cp /media/uraplutonium/Workstation/Workspace/storm-teabag/storm-dist/binary/target/apache-storm-0.11.0-SNAPSHOT.zip /home/cluster &&
+sudo chown cluster:cluster /home/cluster/apache-storm-0.11.0-SNAPSHOT.zip &&
+sudo cp /media/uraplutonium/Workstation/Workspace/stormml/target/storm-machine-learning-0.0.1-SNAPSHOT.jar /home/cluster &&
+sudo chown cluster:cluster /home/cluster/storm-machine-learning-0.0.1-SNAPSHOT.jar
