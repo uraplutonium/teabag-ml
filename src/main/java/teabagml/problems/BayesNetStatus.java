@@ -118,23 +118,24 @@ public class BayesNetStatus extends StatusNode {
     @Override
     public void setCost(int c) {
 	// set the cost as the fixed BIC score for the current BN
-	// if (bayesNet.noEdges()) {
-	//     cost = Integer.MAX_VALUE;
-	// } else {
-	//     cost = (int)score;
-	// }
+	if (bayesNet.noEdges()) {
+	    cost = Integer.MAX_VALUE;
+	} else {
+	    cost = (int)score;
+	}
 	cost = 0;
     }
     
     @Override
     public int h(IStatusNode GOAL) {
+	System.out.println("###############\n###############\n###############\n###############\n");
 	if(score == Double.MAX_VALUE) {
 	    // edit the following line to change scoring functions
 	    // AICScoreFunction, BICScoreFunction, HQCScoreFunction, MDLScoreFunction
-	    //BNScoreFunction bnFunc = new BICScoreFunction();
+	    BNScoreFunction bnFunc = new BICScoreFunction();
 	    //BNScoreFunction bnFunc = new AICScoreFunction();
 	    //BNScoreFunction bnFunc = new HQCScoreFunction();
-	    BNScoreFunction bnFunc = new MDLScoreFunction();
+	    //BNScoreFunction bnFunc = new MDLScoreFunction();
 	    if (bayesNet.noEdges()) {
 		score = Double.MAX_VALUE;
 	    } else {
@@ -142,6 +143,7 @@ public class BayesNetStatus extends StatusNode {
 		score *= (-1);
 	    }
 	}
+	System.out.println("###############\n###############\n###############\n###############\n");
 	System.out.println("SCORE:" + score);
 	return (int)score;
     }

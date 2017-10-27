@@ -38,6 +38,4 @@ public class QuerySet extends CartesianProduct implements Iterable<int[]> {
 	Iterator<int[]> queryiter = new Queryiter();
 	return queryiter;
     }
-    
-
 }

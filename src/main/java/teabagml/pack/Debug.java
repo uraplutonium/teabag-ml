@@ -24,7 +24,7 @@ public class Debug {
 
     public static boolean isSolved() {
 	if (counter < maxIteration) {
-	    System.out.println("counter false unsolved: " + counter);
+	    //System.out.println("counter false unsolved: " + counter);
 	    counter ++;
 	    return false;
 	} else {

@@ -15,11 +15,11 @@ public class EgoBayesNet {
 
     /**
      * @param n the name of egoBayesNet
-     * @param nf the number of features (Dataset.getDimension())
+     * @param nf the number of features (Queryable.getDimension())
      * @param k the hyper-parameter kappa, which indicates the number of circles
      * @param na the number of alters in dataset (EgoNetwork.getDimension())
      * param ne the number of edges in ego-network (EgoNetwork.getNumEdges())
-     * @param af the arity of features (Dataset.getArity())
+     * @param af the arity of features (Queryable.getArity())
      */
     public EgoBayesNet(String n, int nf, int k, int na, Arity af, double a) {
 	kappa = k;
@@ -75,7 +75,7 @@ public class EgoBayesNet {
      * The probability saved in nodeE[alter1][alter2] is to be updated,
      * which represents the probability of constructing an edge in ego-network
      */
-    protected boolean updateEdgeProb(int alter1, int alter2, Dataset ds) {
+    protected boolean updateEdgeProb(int alter1, int alter2, Queryable ds) {
 	if(alter1<0 || alter1>=numAlter || alter2<0 || alter2>=numAlter) {
 	    return false;
 	}
@@ -119,7 +119,7 @@ public class EgoBayesNet {
     /**
      * Update the marginal probabilities of all nodes according to the prior and conditional probabilities in feature bayesNet
      */
-    public void updateAllMarginalProb(EgoNetwork egoNet, Dataset ds) {
+    public void updateAllMarginalProb(EgoNetwork egoNet, Queryable ds) {
 	int counter = 0;
 	//long avg = 0;
 	int numEdge = egoNet.getNumEdges();

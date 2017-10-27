@@ -6,6 +6,7 @@ import java.util.Stack;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Random;
 
 import teabagml.datasets.*;
 import teabagml.bayesnet.*;
@@ -17,9 +18,12 @@ import teabagml.problems.BayesNetStatus;
 import teabagml.algorithms.*;
 import teabagml.egonetwork.*;
 import teabagml.pack.Debug;
+import teabagml.pack.DataCollector;
 import teabagml.adtree.*;
 
-
+import org.python.util.PythonInterpreter;
+import org.python.core.*;
+import org.python.core.PyObject;
 
 public class DMLA {
 
@@ -360,46 +364,47 @@ public class DMLA {
 	PySparseADTree adtree = new PySparseADTree("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv");
 
 	PyDataset pyDataset = new PyDataset("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv", false, false);
-
+	
 	// 5. calculate the BIC score of the current bn with the dataset
 	BICScoreFunction bicFunc = new BICScoreFunction();
 	// double bicScore = bicFunc.getScore(irisDataset, irisbn, null);
-	double bicScore = bicFunc.getScore(pyDataset, irisbn, null);
+	double bicScore = bicFunc.getScore(pyDataset, irisbn);
 	System.out.println("BIC is : " + bicScore);
+	
     }
 
     public static void testAutoLearning() {
 	// 1. load the iris dataset
 
-	//Dataset irisDataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv", false, false);
-	//System.out.println(irisDataset.getInfo());
-
-	Dataset asiaDataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/asia.csv", true, false);
-	System.out.println(asiaDataset.getInfo());
+	//Queryable dataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv", false, false);
+	//Queryable dataset = new PyADTreeDataset("/media/uraplutonium/Workstation/Workspace/datasets/iris_labelled.csv", false, false);
+	//Queryable dataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/asia.csv", true, false);
+	//Queryable dataset = new PyADTreeDataset("/media/uraplutonium/Workstation/Workspace/datasets/asia.csv", true, false);
+	Queryable dataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv", true, false);
 
 	// 2. generate an empty bayesnet with no edges
 	//BayesNet irisbn = new BayesNet("iris bn 1", irisDataset.getDimension(), irisDataset.getArity());
-	BayesNet asiabn = new BayesNet("asia bn", asiaDataset.getDimension(), asiaDataset.getArity());
+	BayesNet bn = new BayesNet("asia bn", dataset.getDimension(), dataset.getArity());
 
 	// 3. update the marginal prob.
 	// irisbn.updateAllMarginalProb();
 	// irisbn.printNodesInfo();
 	
-	asiabn.updateAllMarginalProb();
-	asiabn.printNodesInfo();
+	bn.updateAllMarginalProb();
+	bn.printNodesInfo();
 
 	// 4. calculate the BIC score of the current bn with the dataset
 	BICScoreFunction bicFunc = new BICScoreFunction();
-	// double bicScore = bicFunc.getScore(irisDataset, irisbn);
-	double bicScore = bicFunc.getScore(asiaDataset, asiabn);
+	double bicScore = bicFunc.getScore(dataset, bn);
 
 	Debug.resetCounter();
 
 	System.out.println("\n\n################\n################\n################\n################\n\n");
 
-	TreeSearchEngine closestCostEngine = new TreeSearchEngine(new WideSearchOPENTable());
-	closestCostEngine.search(new BayesNetStatus(StatusType.BASIC, asiabn, asiaDataset), new BayesNetStatus(StatusType.BASIC, asiabn, asiaDataset));
-	closestCostEngine.displayPath();
+	//TreeSearchEngine ASearchEngine = new TreeSearchEngine(new ASearchOPENTable());
+	//ASearchEngine.search(new BayesNetStatus(StatusType.BASIC, bn, dataset), new BayesNetStatus(StatusType.BASIC, bn, dataset));
+	//ASearchEngine.displayPath();
+
 
 	// TreeSearchEngine leastCostEngine = new TreeSearchEngine(new LeastCostOPENTable());
 	// leastCostEngine.search(new BayesNetStatus(irisbn, irisDataset), new BayesNetStatus(irisbn, irisDataset));
@@ -675,8 +680,8 @@ public class DMLA {
 	alterList.makeDifferenceFile("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv");
 	
 	System.out.println("#4. Loading Dataset...");
+	//Queryable egoDataset = new PyDataset("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv", true, false);
 	Dataset egoDataset = new Dataset("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv", true, false);
-	System.out.println(egoDataset.getInfo());
 
 	//System.out.println(egoDataset.getSymbolicTable());
 
@@ -897,6 +902,90 @@ public class DMLA {
 	return (double)larger/(double)(smaller+larger);
     }
 
+    public static void testCountTime() {
+	int counts = 100;
+	String filePrefix = "/media/uraplutonium/Workstation/Workspace/datasets/egonet/facebook";
+	AlterList alterList = null;
+	System.out.println("#1. Creating AlterList...");
+	try {
+	    alterList = new AlterList(filePrefix+".feat", filePrefix+".featnames");
+	} catch(Exception e) {
+	    e.printStackTrace();
+	}
+
+	int numAlter = alterList.size();
+	System.out.println("#2. Creating EgoNetwork...");
+	EgoNetwork egoNet = EgoNetwork.getEgoNetwork(filePrefix+".edges", false, numAlter, alterList);
+
+	System.out.println("#3. Making DifferenceFile...");
+	alterList.makeDifferenceFile("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv");
+	
+	System.out.println("#4. Loading Dataset...");
+	Queryable dataset = new PyDataset("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv", true, false);
+
+	System.out.println("#5. Making ADTree...");
+	long tADTree = System.currentTimeMillis();
+	PySparseADTree adtree = new PySparseADTree("/media/uraplutonium/Workstation/Workspace/datasets/egonet/difference.csv");
+	tADTree = (System.currentTimeMillis() - tADTree);
+
+	// ramdomly generate a
+	System.out.println("checkpoint 1");
+	Random rand = new Random();
+	boolean[] bAttrList = new boolean[dataset.getDimension()];
+	int numAttr = 0;
+	for (int i=0; i<dataset.getDimension(); i++) {
+	    bAttrList[i] = rand.nextBoolean();
+	    if (bAttrList[i])
+		numAttr++;
+	}
+	int[] attrList = new int[numAttr];
+	int j=0;
+	for (int i=0; i<dataset.getDimension(); i++)
+	    if (bAttrList[i]) {
+		attrList[j] = i;
+		j++;
+	    }
+
+	System.out.print("attrList: [");
+	for (int eachn : attrList) {
+	    System.out.print(eachn + ",");
+	}
+	System.out.println("]");
+
+	long tContab = System.currentTimeMillis();
+	PyContingencyTable contab = new PyContingencyTable(adtree, attrList);
+	tContab = System.currentTimeMillis() - tContab;
+	
+	long tCountD = 0;
+	long tCountC = 0;
+	for (int[] eachQuery : new RandomQuery(dataset.getArity(), attrList, 10)) {
+	    long tBuf;
+	    System.out.print("Q: ");
+	    for (int e : eachQuery) {
+		System.out.print(e + ",");
+	    }System.out.println();
+
+	    tBuf = System.currentTimeMillis();
+	    int count1 = dataset.count(eachQuery);
+	    tCountD += (System.currentTimeMillis() - tBuf);
+
+	    tBuf = System.currentTimeMillis();
+	    int count2 = (int)(contab.getCount(eachQuery));
+	    tCountC += (System.currentTimeMillis() - tBuf);
+
+	    if (count1 == count2)
+		System.out.println("C: " + count1);
+	    else
+		System.out.println("ERROR!");
+	}
+	
+	System.out.println("count time from dataset: " + tCountD);
+	System.out.println("contab building time: " + tContab);
+	System.out.println("adtree building time: " + tADTree);
+	System.out.println("count time from adtree: " + tCountC);
+
+    }
+    
     public static void main(String[] args) {
 	// testDataset();
 
@@ -906,10 +995,11 @@ public class DMLA {
 	
 	// System.out.println("==============================");
 
-	//testBNLearnIris();
+	// testBNLearnIris();
 
-	// testAutoLearning();
+	testAutoLearning();
 
+	System.out.println(new DataCollector());
 	/*
 	double[] r = new double[11];
 	int i=0;
@@ -923,9 +1013,9 @@ public class DMLA {
 	*/
 	
 	
-	double rr = testEgoNetwork(-0.5);
-	System.out.println(rr);
+	//double rr = testEgoNetwork(-0.5);
+	//System.out.println(rr);
 	
-
+	//testCountTime();
     }
 }
